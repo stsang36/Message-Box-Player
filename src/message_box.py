@@ -53,8 +53,9 @@ def generate_msg(title: str, body: str, type_msg: str, icon: str) -> None:
 
 
 
-def geneate_msg_threaded(title: str, body: str, type_msg: str, icon: str, x_pos:int, y_pos:int) -> None:
+def geneate_msg_threaded(title: str, body: str, type_msg: str, icon: str, x_pos:int, y_pos:int, abs_time: float) -> None:
 
+    time.sleep(abs_time)
     try:
         thread = threading.Thread(target=generate_msg, args=(title, body, type_msg, icon))
         thread.start()
@@ -63,7 +64,7 @@ def geneate_msg_threaded(title: str, body: str, type_msg: str, icon: str, x_pos:
 
     hwnd = None
     c = 0
-    while hwnd is None or c < 10:
+    while hwnd is None or c < 100:
         hwnd = win32gui.FindWindow("#32770", title)
         c += 1
         time.sleep(0.001)
@@ -73,4 +74,23 @@ def geneate_msg_threaded(title: str, body: str, type_msg: str, icon: str, x_pos:
                               win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
     else:
         print("Message box window not found.")
+
+    vel = 5
+
+    # make bounce on screen
+    while True:
+        hwnd = win32gui.FindWindow("#32770", title)
+        if hwnd:
+            rect = win32gui.GetWindowRect(hwnd)
+            width = rect[2] - rect[0]
+            height = rect[3] - rect[1]
+
+            if rect[0] + width >= x_pos + 200 or rect[0] <= 0:
+                vel = -vel
+
+            win32gui.SetWindowPos(hwnd, None, rect[0] + vel, rect[1], 0, 0,
+                                  win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE)
+            time.sleep(0.01)
+        else:
+            break
     

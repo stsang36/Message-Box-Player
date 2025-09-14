@@ -3,16 +3,17 @@ import win32con
 import time
 from message_box import geneate_msg_threaded
 import random
+import threading
 
 CASCADE = (20, 20)
 
 class Line:
-    def __init__(self, wait_seconds: int, title: str, body: str, type_msg: str, icon: str):
-        self.wait_seconds = wait_seconds
-        self.title = title
-        self.body = body
-        self.type_msg = type_msg
-        self.icon = icon
+    def __init__(self, wait_seconds: float, title: str, body: str, type_msg: str, icon: str):
+        self.wait_seconds:float = wait_seconds
+        self.title: str = title
+        self.body:str = body
+        self.type_msg:str = type_msg
+        self.icon:str = icon
 
 
 class Player:
@@ -26,6 +27,7 @@ class Player:
         self._copy_of_music_sheet: list = []
         self._screen_width = win32api.GetSystemMetrics(0)
         self._screen_height = win32api.GetSystemMetrics(1)
+        self._threads: list[threading.Thread] = []
 
 
 
@@ -49,7 +51,7 @@ class Player:
                             print(f"Skipping invalid line (wrong number of elements): {line}")
                             continue
                         wait_seconds, title, body, type_msg, icon = parts
-                        if not isinstance(wait_seconds, int) or not isinstance(title, str) or not isinstance(body, str) or not isinstance(type_msg, str) or not isinstance(icon, str):
+                        if not isinstance(wait_seconds, float) or not isinstance(title, str) or not isinstance(body, str) or not isinstance(type_msg, str) or not isinstance(icon, str):
                             print(f"Skipping invalid line (wrong types): {line}")
                             continue
                         music_sheet.append(Line(wait_seconds, title, body, type_msg, icon))
@@ -103,11 +105,11 @@ class Player:
                 self._current_y = random.randint(0, self._screen_height - 100)
                 continue
 
-            print(f"Waiting for {line.wait_seconds} seconds before showing message box.")
-            time.sleep(line.wait_seconds)
-
             print(f"Displaying message box at position ({self._current_x}, {self._current_y}) with title '{line.title}'")
-            geneate_msg_threaded(line.title, line.body, line.type_msg, line.icon, self._current_x, self._current_y)
+            t = threading.Thread(target=geneate_msg_threaded, args=(line.title, line.body, line.type_msg, line.icon, self._current_x, self._current_y, line.wait_seconds))
+            
+            t.start()
+            self._threads.append(t)
 
             # if hit the edge of the screen, reset to 0 for respective axis
             if self._current_x + CASCADE[0] > self._screen_width - 200:
@@ -119,6 +121,13 @@ class Player:
                 self._current_y = 0
             else:
                 self._current_y += CASCADE[1]
+        
+        # wait for all threads to finish
+        for t in self._threads:
+            t.join()
+        self._is_playing = False
+        print("Finished playing music sheet.")
+        
 
 
 
